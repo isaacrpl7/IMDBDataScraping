@@ -108,4 +108,4 @@ def get_title_episodes(title_id):
     return jsonify(episode_data)
 
 if __name__ == '__main__':
-    app.run()
+    app.run(port=10000)
