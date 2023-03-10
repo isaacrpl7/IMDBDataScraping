@@ -1,11 +1,12 @@
+from gevent import monkey
+monkey.patch_all()
 from flask import Flask, jsonify, request
 from bs4 import BeautifulSoup
 from urllib.request import Request, urlopen
 from flask_cors import CORS
 import urllib
-from queue import Queue
-from threading import Thread
 import re
+import gevent
 
 app = Flask(__name__)
 CORS(app)
@@ -57,21 +58,16 @@ def get_scraped_data():
 
     return jsonify(results)
 
-class ScrapingWorker(Thread):
-    def __init__(self, queue, episode_data):
-        Thread.__init__(self)
-        self.queue = queue
+class ScrapingWorker(gevent.Greenlet):
+    def __init__(self, season, title_id, episode_data):
+        gevent.Greenlet.__init__(self)
+        self.season = season
+        self.title_id = title_id
         self.episode_data = episode_data
 
-    def run(self):
-        while True:
-            # Get the work from the queue and expand the tuple
-            title_id, season = self.queue.get()
-            try:
-                episodes = scrape_episodes(title_id, season)
-                self.episode_data.append(episodes)
-            finally:
-                self.queue.task_done()
+    def _run(self):
+        episodes = scrape_episodes(self.title_id, self.season)
+        self.episode_data.append(episodes)
 
 def scrape_episodes(title_id, season):
     page = urlopen(Request(
@@ -130,22 +126,16 @@ def get_title_episodes(title_id):
     seasons = seasons['aria-label']
     seasons = int(re.search("\d+", seasons).group())
 
-    # Creating a queue that will store the title_id and season to be scraped
-    queue = Queue()
-
     episode_data = []
 
-    # Creating threads to run the queue
-    for x in range(8):
-        worker = ScrapingWorker(queue, episode_data)
-        # Setting daemon to True will let the main thread exit even though the workers are blocking
-        worker.daemon = True
-        worker.start()
-
-    # Adding items to queue based on seasons and then waiting for them to end
-    for season in range(1,seasons+1):
-        queue.put((title_id, season))
-    queue.join()
+    threads = []
+    for season in range(1, seasons+1):
+        t = ScrapingWorker(season, title_id, episode_data)
+        threads.append(t)
+    for t in threads:
+        t.start()
+        # threads.append(ScrapingWorker(season, title_id, episode_data).start())
+    gevent.joinall(threads)
 
     for index, season in enumerate(episode_data):
         if len(season) == 0:
