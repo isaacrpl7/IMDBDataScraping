@@ -102,7 +102,7 @@ def scrape_episodes(title_id, season):
             print("")
             episode_obj = {
                 "name": episode_name,
-                "rating": episode_rating,
+                "rating": float(episode_rating),
                 "season": season,
                 "ep_number": episode_number,
                 "total_votes": total_votes
@@ -123,7 +123,11 @@ def get_title_episodes(title_id):
     html = page.read().decode("utf-8")
     soup = BeautifulSoup(html, "html.parser")
     seasons = soup.find(id='browse-episodes-season')
-    seasons = seasons['aria-label']
+    if seasons == None:
+        seasons = soup.find(attrs={"data-testid": "episodes-browse-episodes"})
+        seasons = seasons.find(string=re.compile("season", re.IGNORECASE))
+    else:
+        seasons = seasons['aria-label']
     seasons = int(re.search("\d+", seasons).group())
 
     episode_data = []
