@@ -7,6 +7,7 @@ from flask_cors import CORS
 import urllib
 import re
 import gevent
+import time
 
 app = Flask(__name__)
 CORS(app)
@@ -115,7 +116,7 @@ def scrape_episodes(title_id, season):
 
 @app.route('/list-episodes/<title_id>')
 def get_title_episodes(title_id):
-    # Getting how many seasons the title has
+    # Retrieving how many seasons the title has
     page = urlopen(Request(
         url=f'https://www.imdb.com/title/{title_id}/?ref_=fn_al_tt_1', 
         headers={'User-Agent': 'Mozilla/5.0'}
@@ -133,13 +134,16 @@ def get_title_episodes(title_id):
     episode_data = []
 
     threads = []
+    start = time.time()
     for season in range(1, seasons+1):
         t = ScrapingWorker(season, title_id, episode_data)
         threads.append(t)
     for t in threads:
         t.start()
-        # threads.append(ScrapingWorker(season, title_id, episode_data).start())
     gevent.joinall(threads)
+    end = time.time()
+    print("Tempo decorrido (segundos):")
+    print(end-start)
 
     for index, season in enumerate(episode_data):
         if len(season) == 0:
