@@ -67,6 +67,7 @@ class ScrapingWorker(gevent.Greenlet):
         self.episode_data = episode_data
 
     def _run(self):
+        print(f'Started season {self.season}')
         episodes = scrape_episodes(self.title_id, self.season)
         self.episode_data.append(episodes)
 
@@ -77,23 +78,24 @@ def scrape_episodes(title_id, season):
     ))
     html = page.read().decode("utf-8")
     soup = BeautifulSoup(html, "html.parser")
-    episode_list = soup.find_all(class_="list_item")
+    episode_list = soup.find_all(class_="episode-item-wrapper")
 
     episodes = []
     episode_number = 1
     for episode in episode_list:
         # Getting each episode the 'a' tag
-        strong = episode.find("strong")
-        link = strong.find("a")
+        h4 = episode.find("h4")
+        link = h4.find("a")
 
         episode_url = link['href']
         episode_name = link.string
 
-        episode_rating = episode.find(class_="ipl-rating-star__rating")
-        total_votes = episode.find(class_="ipl-rating-star__total-votes")
+        episode_rating = episode.find(attrs={"data-testid": "ratingGroup--container"})
+        episode_rating = episode_rating.find(class_="ratingGroup--imdb-rating").get_text().split("/")[0]
+
+        total_votes = 100#episode.find(class_="ipl-rating-star__total-votes")
         if episode_rating != None and total_votes != None:
-            episode_rating = episode_rating.string
-            total_votes = total_votes.string.strip('()')
+            # total_votes = total_votes.string.strip('()')
 
             print(f'Episode name: {episode_name}')
             print(f'Episode rating: {episode_rating}')
@@ -106,7 +108,7 @@ def scrape_episodes(title_id, season):
                 "rating": float(episode_rating),
                 "season": season,
                 "ep_number": episode_number,
-                "total_votes": int(total_votes.replace(',', ''))
+                "total_votes": total_votes#int(total_votes.replace(',', ''))
             }
 
             episodes.append(episode_obj)
@@ -145,9 +147,7 @@ def get_title_episodes(title_id):
     print("Tempo decorrido (segundos):")
     print(end-start)
 
-    for index, season in enumerate(episode_data):
-        if len(season) == 0:
-            del episode_data[index]
+    episode_data = [season for index, season in enumerate(episode_data) if len(season) > 0]
 
     # Sorting the result by season
     def sortFunc(season):
