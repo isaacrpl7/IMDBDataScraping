@@ -106,7 +106,7 @@ def scrape_episodes(title_id, season):
                 "rating": float(episode_rating),
                 "season": season,
                 "ep_number": episode_number,
-                "total_votes": total_votes
+                "total_votes": int(total_votes.replace(',', ''))
             }
 
             episodes.append(episode_obj)
