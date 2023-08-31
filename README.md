@@ -1,5 +1,5 @@
 # About the project
-This is a project that scrapes data from TV Series (not movies) on IMDB. The main goal is to provide an API to my other project that is the Front-End, showing
+This is a project that scrapes data from TV Series (not movies) on IMDB. The main goal is to provide an API to my other [project](https://github.com/isaacrpl7/IMDB-TV-Series-Charts) that is the Front-End, showing
 a comparison between ratings of each episode from each season of a tv serie. It uses Flask to provide the API and a multithread approach is used in order
 to speed the scraper by fetching pages concurrently.
 
