@@ -8,6 +8,7 @@ import urllib
 import re
 import gevent
 import time
+from utils import abbrev_to_integer
 
 app = Flask(__name__)
 CORS(app)
@@ -79,23 +80,38 @@ def scrape_episodes(title_id, season):
     html = page.read().decode("utf-8")
     soup = BeautifulSoup(html, "html.parser")
     episode_list = soup.find_all(class_="episode-item-wrapper")
+    # For some reason, imdb is sometimes returning the old site version
+    old = False
+    if len(episode_list) == 0:
+        old = True
+    
+    if old:
+        episode_list = soup.find_all(class_="list_item")
 
     episodes = []
     episode_number = 1
     for episode in episode_list:
-        # Getting each episode the 'a' tag
-        h4 = episode.find("h4")
-        link = h4.find("a")
+        if old:
+            title = episode.find("strong")
+        else:
+            title = episode.find("h4")
+        link = title.find("a")
 
         episode_url = link['href']
         episode_name = link.string
+        
+        if old:
+            episode_rating = episode.find(class_="ipl-rating-star__rating")
+            total_votes = episode.find(class_="ipl-rating-star__total-votes")
+        else:
+            episode_rating = episode.find(attrs={"data-testid": "ratingGroup--container"})
+            episode_rating = episode_rating.find(class_="ratingGroup--imdb-rating").get_text().split("/")[0]
+            total_votes = abbrev_to_integer(episode.find(class_="ipc-rating-star--voteCount").text)
 
-        episode_rating = episode.find(attrs={"data-testid": "ratingGroup--container"})
-        episode_rating = episode_rating.find(class_="ratingGroup--imdb-rating").get_text().split("/")[0]
-
-        total_votes = 100#episode.find(class_="ipl-rating-star__total-votes")
         if episode_rating != None and total_votes != None:
-            # total_votes = total_votes.string.strip('()')
+            if old:
+                episode_rating = episode_rating.string
+                total_votes = int(total_votes.string.strip('()').replace(',', ''))
 
             print(f'Episode name: {episode_name}')
             print(f'Episode rating: {episode_rating}')
@@ -108,7 +124,7 @@ def scrape_episodes(title_id, season):
                 "rating": float(episode_rating),
                 "season": season,
                 "ep_number": episode_number,
-                "total_votes": total_votes#int(total_votes.replace(',', ''))
+                "total_votes": total_votes
             }
 
             episodes.append(episode_obj)
