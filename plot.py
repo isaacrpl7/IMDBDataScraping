@@ -74,7 +74,7 @@ class ScrapingWorker(gevent.Greenlet):
 
 def scrape_episodes(title_id, season):
     page = urlopen(Request(
-        url=f'https://www.imdb.com/title/{title_id}/episodes?season={season}', 
+        url=f'https://www.imdb.com/title/{title_id}/episodes/?season={season}', 
         headers={'User-Agent': 'Mozilla/5.0'}
     ))
     html = page.read().decode("utf-8")
